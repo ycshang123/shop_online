@@ -1,5 +1,6 @@
 package com.soft2242.shop.service.impl;
 
+import ch.qos.logback.classic.spi.EventArgUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.soft2242.shop.common.exception.ServerException;
@@ -11,6 +12,7 @@ import com.soft2242.shop.entity.IndexRecommendTab;
 import com.soft2242.shop.mapper.GoodsMapper;
 import com.soft2242.shop.mapper.IndexRecommendMapper;
 import com.soft2242.shop.mapper.IndexRecommendTabMapper;
+import com.soft2242.shop.query.Query;
 import com.soft2242.shop.query.RecommendByTabGoodsQuery;
 import com.soft2242.shop.service.GoodsService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -25,7 +27,7 @@ import java.util.List;
 
 /**
  * <p>
- *  服务实现类
+ * 服务实现类
  * </p>
  *
  * @author ycshang
@@ -74,5 +76,13 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
 
 
         return recommendVO;
+    }
+
+    @Override
+    public PageResult<RecommendGoodsVO> getRecommendGoodsByPage(Query query) {
+        Page<Goods> page = new Page<>();
+        Page<Goods> goodsPage = baseMapper.selectPage(page, null);
+        List<RecommendGoodsVO> result = GoodsConvert.INSTANCE.convertToRecommendGoodsVOList(goodsPage.getRecords());
+        return new PageResult<>(page.getTotal(), query.getPageSize(), query.getPage(), page.getPages(), result);
     }
 }
