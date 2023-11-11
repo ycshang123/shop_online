@@ -6,7 +6,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-import java.security.Timestamp;
+
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 
 @Data
@@ -28,7 +29,7 @@ public class UserVO {
     private Integer gender;
     @Schema(description = "生日")
     @JsonFormat(pattern = DateUtils.DATE_PATTERN)
-    private LocalDateTime birthday;
+    private Timestamp birthday;
     @Schema(description = "职业")
     private String profession;
     @Schema(description = "省份编码")
