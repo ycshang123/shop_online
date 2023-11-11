@@ -40,7 +40,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public LoginResultVO login(UserLoginQuery query) {
-
         //  1、获取openId
         String url = "https://api.weixin.qq.com/sns/jscode2session?" +
                 "appid=" + APP_ID +
@@ -79,6 +78,27 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         userVO.setToken(token);
 
 
+        return userVO;
+    }
+
+    @Override
+    public User getUserInfo(Integer userId) {
+        User user = baseMapper.selectById(userId);
+        if (user == null) {
+            throw new ServerException("用户不能存在");
+        }
+
+        return user;
+    }
+
+    @Override
+    public UserVO editUserInfo(UserVO userVO) {
+        User user = baseMapper.selectById(userVO.getId());
+        if (user == null) {
+            throw new ServerException("用户不存在");
+        }
+        User userConvert = UserConvert.INSTANCE.convert(userVO);
+        updateById(userConvert);
         return userVO;
     }
 }

@@ -24,4 +24,22 @@ public interface UserService extends IService<User> {
      */
     LoginResultVO login(UserLoginQuery query);
 
+
+    /**
+     * 根据用户id 获取用户信息
+     *
+     * @param userId
+     * @return
+     */
+    User getUserInfo(Integer userId);
+
+
+    /**
+     * 修改用户信息
+     *
+     * @param userVO
+     * @return
+     */
+    UserVO editUserInfo(UserVO userVO);
+
 }
