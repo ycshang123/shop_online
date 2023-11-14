@@ -43,7 +43,7 @@ public class UserShoppingCartController {
     @GetMapping("list")
     public Result<List<CartGoodsVO>> shopCartList(HttpServletRequest request) {
         Integer userId = getUserId(request);
-        List<CartGoodsVO> list = userShoppingCartService.shopCdartList(userId);
+        List<CartGoodsVO> list = userShoppingCartService.shopCartList(userId);
         return Result.ok(list);
     }
 
