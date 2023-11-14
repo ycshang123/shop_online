@@ -43,4 +43,13 @@ public interface UserShoppingCartService extends IService<UserShoppingCart> {
      */
     CartGoodsVO editCart(EditCartQuery query);
 
+    /**
+     * 删除/清空购物车信息
+     *
+     * @param userId
+     * @param ids
+     */
+
+    void removeCartGoods(Integer userId, List<Integer> ids);
+
 }
