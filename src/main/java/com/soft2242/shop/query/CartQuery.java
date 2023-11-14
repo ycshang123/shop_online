@@ -17,7 +17,7 @@ public class CartQuery {
     @NotNull(message = "加入购物车数量不能为空")
     private Integer count;
     @Schema(description = "选中商品属性")
-    @NotBlank(message = "选中商品属性不能为空")
+    @NotBlank(message = "选中商品属性不能为空!")
     private String attrsText;
     @Schema(description = "用户id")
     private Integer userId;
