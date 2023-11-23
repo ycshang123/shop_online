@@ -8,6 +8,9 @@ import lombok.Data;
 
 import java.util.List;
 
+/**
+ * @author ycshang
+ */
 @Data
 public class GoodsVO {
     @Schema(description = "主键id")
