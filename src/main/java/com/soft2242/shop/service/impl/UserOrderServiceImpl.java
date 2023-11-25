@@ -2,23 +2,17 @@ package com.soft2242.shop.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.soft2242.shop.common.exception.ServerException;
+import com.soft2242.shop.convert.UserAddressConvert;
 import com.soft2242.shop.convert.UserOrderDetailConvert;
-import com.soft2242.shop.entity.Goods;
-import com.soft2242.shop.entity.UserOrder;
-import com.soft2242.shop.entity.UserOrderGoods;
-import com.soft2242.shop.entity.UserShippingAddress;
+import com.soft2242.shop.entity.*;
 import com.soft2242.shop.enums.OrderStatusEnum;
-import com.soft2242.shop.mapper.GoodsMapper;
-import com.soft2242.shop.mapper.UserOrderGoodsMapper;
-import com.soft2242.shop.mapper.UserOrderMapper;
-import com.soft2242.shop.mapper.UserShippingAddressMapper;
+import com.soft2242.shop.mapper.*;
 import com.soft2242.shop.query.OrderGoodsQuery;
 import com.soft2242.shop.service.UserOrderGoodsService;
 import com.soft2242.shop.service.UserOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.soft2242.shop.service.UserShippingAddressService;
-import com.soft2242.shop.vo.OrderDetailVO;
-import com.soft2242.shop.vo.UserOrderVO;
+import com.soft2242.shop.vo.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -34,6 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -57,6 +52,10 @@ public class UserOrderServiceImpl extends ServiceImpl<UserOrderMapper, UserOrder
 
     @Autowired
     private UserOrderGoodsMapper userOrderGoodsMapper;
+
+
+    @Autowired
+    private UserShoppingCartMapper userShoppingCartMapper;
     private ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
 
     private ScheduledFuture<?> cancelTask;
@@ -175,6 +174,66 @@ public class UserOrderServiceImpl extends ServiceImpl<UserOrderMapper, UserOrder
         return orderDetailVO;
     }
 
+
+    @Override
+    public SubmitOrderVO getPreOrderDetail(Integer userId) {
+        SubmitOrderVO submitOrderVO = new SubmitOrderVO();
+        //        1、查询用户购物车中选中的商品列表,如果为空值直接返回 null
+        List<UserShoppingCart> cartList = userShoppingCartMapper.selectList(new LambdaQueryWrapper<UserShoppingCart>().eq(UserShoppingCart::getUserId, userId).eq(UserShoppingCart::getSelected, true));
+        if (cartList.size() == 0) {
+            return null;
+        }
+
+        //        2、查询用户收货地址列表
+        List<UserAddressVO> addressList = getAddressListByUserId(userId, null);
+        //        3、声明订单应付款、总运费金额
+        BigDecimal totalPrice = new BigDecimal(0);
+        Integer totalCount = 0;
+        BigDecimal totalPayPrice = new BigDecimal(0);
+        BigDecimal totalFreight = new BigDecimal(0);
+        //      4、查询商品信息并计算每个选购商品的总费用
+        List<UserOrderGoodsVO> goodList = new ArrayList<>();
+        for (UserShoppingCart shoppingCart : cartList) {
+            Goods goods = goodsMapper.selectById(shoppingCart.getGoodsId());
+            UserOrderGoodsVO userOrderGoodsVO = new UserOrderGoodsVO();
+            userOrderGoodsVO.setId(goods.getId());
+            userOrderGoodsVO.setName(goods.getName());
+            userOrderGoodsVO.setPicture(goods.getCover());
+            userOrderGoodsVO.setCount(shoppingCart.getCount());
+            userOrderGoodsVO.setAttrsText(shoppingCart.getAttrsText());
+            userOrderGoodsVO.setPrice(goods.getOldPrice());
+            userOrderGoodsVO.setPayPrice(goods.getPrice());
+            userOrderGoodsVO.setTotalPrice(goods.getFreight() + goods.getPrice() * shoppingCart.getCount());
+            userOrderGoodsVO.setTotalPayPrice(userOrderGoodsVO.getTotalPrice());
+
+            BigDecimal freight = new BigDecimal(goods.getFreight().toString());
+            BigDecimal goodsPrice = new BigDecimal(goods.getPrice().toString());
+            BigDecimal count = new BigDecimal(shoppingCart.getCount().toString());
+
+
+            BigDecimal price = goodsPrice.multiply(count).add(freight);
+
+
+            totalPrice = totalPrice.add(price);
+            totalCount += userOrderGoodsVO.getCount();
+            totalPayPrice = totalPayPrice.add(new BigDecimal(userOrderGoodsVO.getTotalPayPrice().toString()));
+            totalFreight = totalFreight.add(freight);
+            goodList.add(userOrderGoodsVO);
+        }
+//       5、费用综述信息
+        OrderInfoVO orderInfoVO = new OrderInfoVO();
+        orderInfoVO.setGoodsCount(totalCount);
+        orderInfoVO.setTotalPayPrice(totalPayPrice.doubleValue());
+        orderInfoVO.setTotalPrice(totalPrice.doubleValue());
+        orderInfoVO.setPostFee(totalFreight.doubleValue());
+
+
+        submitOrderVO.setUserAddresses(addressList);
+        submitOrderVO.setGoods(goodList);
+        submitOrderVO.setSummary(orderInfoVO);
+        return submitOrderVO;
+    }
+
     @Async
     public void scheduleOrderCancel(UserOrder userOrder) {
         cancelTask = executorService.schedule(() -> {
@@ -191,5 +250,31 @@ public class UserOrderServiceImpl extends ServiceImpl<UserOrderMapper, UserOrder
 //            取消定时任务
             cancelTask.cancel(true);
         }
+    }
+
+
+    public List<UserAddressVO> getAddressListByUserId(Integer userId, Integer addressId) {
+//        1、根据用户id 查询该用户的收货地址列表
+
+        List<UserShippingAddress> list = userShippingAddressMapper.selectList(new LambdaQueryWrapper<UserShippingAddress>().eq(UserShippingAddress::getUserId, userId));
+        UserShippingAddress userShippingAddress = null;
+        UserAddressVO userAddressVO;
+        if (list.size() == 0) {
+            return null;
+        }
+
+//        2、如果用户已经有选中的地址，将选中的地址属性设置为true
+        if (addressId != null) {
+            userShippingAddress = list.stream().filter(item -> item.getId().equals(addressId)).collect(Collectors.toList()).get(0);
+            list.remove(userShippingAddress);
+        }
+
+        List<UserAddressVO> addressList = UserAddressConvert.INSTANCE.convertToUserAddressVOList(list);
+        if (userShippingAddress != null) {
+            userAddressVO = UserAddressConvert.INSTANCE.convertToUserAddressVO(userShippingAddress);
+            userAddressVO.setSelected(true);
+            addressList.add(userAddressVO);
+        }
+        return addressList;
     }
 }
