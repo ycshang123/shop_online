@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSONObject;
 import com.soft2242.shop.common.exception.ServerException;
 import com.soft2242.shop.common.result.PageResult;
 import com.soft2242.shop.common.result.Result;
+import com.soft2242.shop.query.CancelGoodsQuery;
 import com.soft2242.shop.query.OrderPreQuery;
 import com.soft2242.shop.query.OrderQuery;
 import com.soft2242.shop.service.UserOrderService;
@@ -90,6 +91,14 @@ public class UserOrderController {
         PageResult<OrderDetailVO> orderList = userOrderService.getOrderList(query);
         return Result.ok(orderList);
     }
+
+    @Operation(summary = "取消订单")
+    @PutMapping("cancel")
+    public Result<OrderDetailVO> cancelOrder(@RequestBody @Validated CancelGoodsQuery query) {
+        OrderDetailVO orderDetailVO = userOrderService.cancelOrder(query);
+        return Result.ok(orderDetailVO);
+    }
+
 
 
 }
