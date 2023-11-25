@@ -1,7 +1,9 @@
 package com.soft2242.shop.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.soft2242.shop.common.exception.ServerException;
+import com.soft2242.shop.common.result.PageResult;
 import com.soft2242.shop.convert.UserAddressConvert;
 import com.soft2242.shop.convert.UserOrderDetailConvert;
 import com.soft2242.shop.entity.*;
@@ -9,6 +11,7 @@ import com.soft2242.shop.enums.OrderStatusEnum;
 import com.soft2242.shop.mapper.*;
 import com.soft2242.shop.query.OrderGoodsQuery;
 import com.soft2242.shop.query.OrderPreQuery;
+import com.soft2242.shop.query.OrderQuery;
 import com.soft2242.shop.service.UserOrderGoodsService;
 import com.soft2242.shop.service.UserOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -345,5 +348,42 @@ public class UserOrderServiceImpl extends ServiceImpl<UserOrderMapper, UserOrder
         submitOrderVO.setGoods(goodsList);
         submitOrderVO.setSummary(orderInfoVO);
         return submitOrderVO;
+    }
+
+    @Override
+    public PageResult<OrderDetailVO> getOrderList(OrderQuery query) {
+//        1、设置分页参数
+        List<OrderDetailVO> list = new ArrayList<>();
+        Page<UserOrder> page = new Page<>(query.getPage(), query.getPageSize());
+//        2、查询条件：当 orderType 为空 或者值为 0 时，查询订单，否则根据订单状态条件筛选
+        LambdaQueryWrapper<UserOrder> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserOrder::getUserId, query.getUserId());
+        if (query.getOrderType() != null && query.getOrderType() != 0) {
+            wrapper.eq(UserOrder::getStatus, query.getOrderType());
+        }
+        wrapper.orderByDesc(UserOrder::getCreateTime);
+//        3、查询所有的订单列表(分页)
+        List<UserOrder> orderRecords = baseMapper.selectPage(page, wrapper).getRecords();
+//        4、查询订单列表为空，返回空的分页内容
+        if (orderRecords.size() == 0) {
+            return new PageResult<>(page.getTotal(), query.getPageSize(), query.getPage(), page.getPages(), list);
+        }
+//        5、查询订单对应的商品信息和收货信息
+        for (UserOrder userOrder : orderRecords) {
+            OrderDetailVO orderDetailVO = UserOrderDetailConvert.INSTANCE.convertToOrderDetailVO(userOrder);
+            UserShippingAddress userShippingAddress = userShippingAddressMapper.selectById(userOrder.getAddressId());
+            if (userShippingAddress != null) {
+                orderDetailVO.setReceiverContact(userShippingAddress.getReceiver());
+                orderDetailVO.setReceiverAddress(userShippingAddress.getAddress());
+                orderDetailVO.setReceiverMobile(userOrder.getCancelReason());
+            }
+
+            List<UserOrderGoods> userOrderGoods = userOrderGoodsMapper.selectList(new LambdaQueryWrapper<UserOrderGoods>().eq(UserOrderGoods::getGoodsId, userOrder.getId()));
+            orderDetailVO.setSkus(userOrderGoods);
+            list.add(orderDetailVO);
+        }
+
+
+        return new PageResult<>(page.getTotal(), query.getPageSize(), query.getPage(), page.getPages(), list);
     }
 }
