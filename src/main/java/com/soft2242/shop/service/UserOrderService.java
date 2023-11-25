@@ -7,6 +7,7 @@ import com.soft2242.shop.query.CancelGoodsQuery;
 import com.soft2242.shop.query.OrderPreQuery;
 import com.soft2242.shop.query.OrderQuery;
 import com.soft2242.shop.vo.OrderDetailVO;
+import com.soft2242.shop.vo.OrderLogisticVO;
 import com.soft2242.shop.vo.SubmitOrderVO;
 import com.soft2242.shop.vo.UserOrderVO;
 
@@ -114,6 +115,14 @@ public interface UserOrderService extends IService<UserOrder> {
      * @return
      */
     OrderDetailVO receiptOrder(Integer id);
+
+    /**
+     * 物流订单信息
+     *
+     * @param id
+     * @return
+     */
+    OrderLogisticVO getOrderLogistics(Integer id);
 
 
 }
